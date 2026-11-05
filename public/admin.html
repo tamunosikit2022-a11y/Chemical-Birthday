@@ -38,6 +38,8 @@ button.go:hover{background:var(--ind-d)}button.go:disabled{opacity:.6}
 .btn.del{border-color:#A3103F;color:#A3103F}
 .btn.fly{background:var(--ink);color:#fff;text-decoration:none}
 .empty{color:var(--muted);text-align:center;padding:28px 0}
+.alerts{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.alerts .t{flex:1;min-width:180px}.alerts .t b{display:block}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -65,6 +67,7 @@ button.go:hover{background:var(--ind-d)}button.go:disabled{opacity:.6}
 
   <section id="vDash" hidden>
     <div class="top"><div><h1>Birthdays</h1><p class="lead" id="count"></p></div><button class="link" id="out">Log out</button></div>
+    <div class="alerts" id="alerts"><div class="t"><b>Birthday alerts</b><span class="sub" id="alertState">Checking…</span></div><button class="link" id="alertBtn" hidden>Enable alerts</button><button class="link" id="alertTest" hidden>Send test</button></div>
     <div class="today" id="today" hidden></div>
     <p class="msg" id="mDash" role="alert"></p>
     <div id="list"></div>
@@ -117,7 +120,7 @@ const fmt = dob => { const [,m,d]=dob.split('-').map(Number); return `${d} ${MON
 
 let stamp = {};
 async function load(){
-  show('vDash'); $('mDash').textContent='';
+  show('vDash'); $('mDash').textContent=''; alertsInit();
   const r = await api({action:'list'});
   if(r.status===401) return show('vLogin');
   if(!r.ok) return $('mDash').textContent = r.error||'Could not load members.';
@@ -161,6 +164,42 @@ $('list').addEventListener('click', async e=>{
   const r = await api({action:'delete',id:b.dataset.del});
   if(!r.ok) return $('mDash').textContent = r.error||'Could not delete.';
   load();
+});
+
+// ---- push alerts ----
+const b64=s=>{const r=(s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(r);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));};
+let alertsReady=false, swReg=null;
+const aState=t=>$('alertState').textContent=t;
+async function alertsRefresh(){
+  const sub=await swReg.pushManager.getSubscription();
+  const on=!!sub&&Notification.permission==='granted';
+  aState(on?'On for this phone.':(Notification.permission==='denied'?'Blocked. Allow notifications for this site in the browser settings.':'Off on this phone.'));
+  $('alertBtn').textContent=on?'Turn off':'Enable alerts';$('alertBtn').hidden=false;$('alertTest').hidden=!on;
+}
+async function alertsInit(){
+  if(alertsReady)return;alertsReady=true;
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){aState('This browser cannot receive alerts. Use Chrome on the admin’s phone.');return;}
+  try{swReg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;await alertsRefresh();}
+  catch(e){aState('Alerts could not start on this device.');}
+}
+$('alertBtn').addEventListener('click',async()=>{
+  try{
+    const existing=await swReg.pushManager.getSubscription();
+    if(existing&&Notification.permission==='granted'){await api({action:'unsubscribe',endpoint:existing.endpoint});await existing.unsubscribe();return alertsRefresh();}
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted')return alertsRefresh();
+    const v=await api({action:'vapid'});
+    if(!v.key)return aState('The alert keys are not set in Vercel yet.');
+    if(existing)await existing.unsubscribe();
+    const sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(v.key)});
+    const r=await api({action:'subscribe',sub:sub.toJSON()});
+    if(!r.ok)return aState(r.error||'Could not turn alerts on.');
+    await alertsRefresh();
+  }catch(e){aState('Could not change alerts. Try again.');}
+});
+$('alertTest').addEventListener('click',async()=>{
+  aState('Sending…');const r=await api({action:'test'});
+  aState(r.ok?'Test sent. It should appear in a few seconds.':(r.error||'Test failed.'));
 });
 boot();
 </script>
