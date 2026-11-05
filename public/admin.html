@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin · Chemical Engineering birthdays</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F1F6F5;--card:#fff;--ink:#0E2A2B;--muted:#53706F;--line:#C6D6D4;--flask:#0F8B8D;--ind:#D81B72;--ind-d:#B3135D;
+--font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.5 var(--font);padding:24px 16px 56px;display:flex;justify-content:center}
+main{width:100%;max-width:560px}
+h1{font-weight:800;font-size:1.8rem;line-height:1.1;margin:0 0 6px;letter-spacing:-.02em}
+.lead{color:var(--muted);margin:0 0 20px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+label{display:block;font-weight:600;margin:0 0 6px}
+input[type=password],input[type=text]{width:100%;font:inherit;padding:12px;min-height:48px;border:1.5px solid var(--line);border-radius:8px;margin-bottom:16px}
+input:focus-visible,button:focus-visible,.btn:focus-within{outline:3px solid var(--flask);outline-offset:2px}
+button.go{width:100%;font:600 1.05rem var(--font);color:#fff;background:var(--ind);border:0;border-radius:8px;min-height:50px;cursor:pointer}
+button.go:hover{background:var(--ind-d)}button.go:disabled{opacity:.6}
+.msg{min-height:1.4em;margin:12px 0 0;font-weight:600;color:#A3103F}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.link{background:none;border:1.5px solid var(--ink);border-radius:8px;font:600 .9rem var(--font);padding:8px 12px;min-height:40px;cursor:pointer;color:var(--ink)}
+.today{background:var(--ind);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-weight:600}
+.row{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.av{width:60px;height:60px;border-radius:50%;object-fit:cover;flex:none;background:var(--paper);border:1.5px solid var(--line);display:grid;place-items:center;font-weight:800;color:var(--flask);font-size:1.2rem}
+.info{flex:1;min-width:0}.nm{font-weight:600;overflow-wrap:anywhere}
+.sub{color:var(--muted);font-size:.92rem}
+.tag{display:inline-block;font-weight:600;font-size:.85rem;border-radius:99px;padding:1px 10px;background:var(--paper);border:1px solid var(--line);margin-top:2px}
+.tag.now{background:var(--ind);color:#fff;border-color:var(--ind)}
+.acts{display:flex;flex-direction:column;gap:6px;flex:none}
+.btn{display:inline-block;text-align:center;font:600 .85rem var(--font);border:1.5px solid var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer;background:#fff}
+.btn input{position:absolute;opacity:0;width:1px;height:1px}
+.btn.del{border-color:#A3103F;color:#A3103F}
+.empty{color:var(--muted);text-align:center;padding:28px 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <section id="vSetup" hidden>
+    <h1>Create your admin password</h1>
+    <p class="lead">Only you will know it. You need the setup code you were given.</p>
+    <form class="box" id="fSetup">
+      <label for="sCode">Setup code</label><input id="sCode" type="password" autocomplete="off">
+      <label for="sPw">New password <span class="sub">(at least 8 characters)</span></label><input id="sPw" type="password" autocomplete="new-password">
+      <label for="sPw2">Repeat password</label><input id="sPw2" type="password" autocomplete="new-password">
+      <button class="go" type="submit">Create password</button><p class="msg" id="mSetup" role="alert"></p>
+    </form>
+  </section>
+
+  <section id="vLogin" hidden>
+    <h1>Admin login</h1>
+    <p class="lead">Chemical Engineering birthdays</p>
+    <form class="box" id="fLogin">
+      <label for="lPw">Password</label><input id="lPw" type="password" autocomplete="current-password">
+      <button class="go" type="submit">Log in</button><p class="msg" id="mLogin" role="alert"></p>
+    </form>
+  </section>
+
+  <section id="vDash" hidden>
+    <div class="top"><div><h1>Birthdays</h1><p class="lead" id="count"></p></div><button class="link" id="out">Log out</button></div>
+    <div class="today" id="today" hidden></div>
+    <p class="msg" id="mDash" role="alert"></p>
+    <div id="list"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const show = v => ['vSetup','vLogin','vDash'].forEach(x => $(x).hidden = x !== v);
+async function api(body){
+  try{
+    const r = await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await r.json().catch(()=>({}));
+    return {ok:r.ok,status:r.status,...d};
+  }catch(e){ return {ok:false,error:'No connection. Check your internet and try again.'}; }
+}
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function boot(){
+  const s = await api({action:'status'});
+  if(!s.ok){ show('vLogin'); $('mLogin').textContent = s.error||''; return; }
+  if(!s.setup) return show('vSetup');
+  if(!s.loggedIn) return show('vLogin');
+  load();
+}
+
+$('fSetup').addEventListener('submit', async e=>{
+  e.preventDefault(); const m=$('mSetup'); m.textContent='';
+  if($('sPw').value!==$('sPw2').value) return m.textContent='The two passwords do not match.';
+  const r = await api({action:'setup',code:$('sCode').value,password:$('sPw').value});
+  if(!r.ok) return m.textContent=r.error||'Could not create the password.';
+  $('sPw').value=$('sPw2').value=$('sCode').value=''; load();
+});
+$('fLogin').addEventListener('submit', async e=>{
+  e.preventDefault(); $('mLogin').textContent='';
+  const r = await api({action:'login',password:$('lPw').value});
+  if(!r.ok) return $('mLogin').textContent=r.error||'Could not log in.';
+  $('lPw').value=''; load();
+});
+$('out').addEventListener('click', async ()=>{ await api({action:'logout'}); show('vLogin'); });
+
+function daysUntil(dob){
+  const [,m,d] = dob.split('-').map(Number), t = new Date(); t.setHours(0,0,0,0);
+  let n = new Date(t.getFullYear(), m-1, d);
+  if(n < t) n = new Date(t.getFullYear()+1, m-1, d);
+  return Math.round((n - t)/864e5);
+}
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmt = dob => { const [,m,d]=dob.split('-').map(Number); return `${d} ${MONTHS[m-1]}`; };
+
+let stamp = {};
+async function load(){
+  show('vDash'); $('mDash').textContent='';
+  const r = await api({action:'list'});
+  if(r.status===401) return show('vLogin');
+  if(!r.ok) return $('mDash').textContent = r.error||'Could not load members.';
+  const ms = r.members.map(m=>({...m,days:daysUntil(m.dob)})).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name));
+  $('count').textContent = ms.length===1 ? '1 member' : `${ms.length} members`;
+  const now = ms.filter(m=>m.days===0);
+  $('today').hidden = !now.length;
+  $('today').textContent = now.length ? `Birthday today: ${now.map(m=>m.name).join(', ')}` : '';
+  $('list').innerHTML = ms.length ? ms.map(m=>{
+    const ini = esc(m.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase());
+    const av = m.has_photo ? `<img class="av" alt="" src="/api/admin?photo=${m.id}&v=${stamp[m.id]||0}">` : `<div class="av" aria-hidden="true">${ini}</div>`;
+    const tag = m.days===0 ? '<span class="tag now">Today</span>' : `<span class="tag">in ${m.days} day${m.days===1?'':'s'}</span>`;
+    const ph = m.phone ? `<a class="sub" href="tel:${esc(m.phone)}">${esc(m.phone)}</a>` : '';
+    return `<div class="row">${av}<div class="info"><div class="nm">${esc(m.name)}</div><div class="sub">${fmt(m.dob)}</div>${ph?ph+'<br>':''}${tag}</div>
+      <div class="acts"><label class="btn">Change photo<input type="file" accept="image/*" data-photo="${m.id}"></label><button class="btn del" data-del="${m.id}" data-name="${esc(m.name)}">Delete</button></div></div>`;
+  }).join('') : '<p class="empty">No one has registered yet.</p>';
+}
+
+function resize(file){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{const s=Math.min(1,600/Math.max(img.width,img.height)),c=document.createElement('canvas');
+      c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',.85));};
+    img.onerror=()=>rej(); img.src=url;
+  });
+}
+$('list').addEventListener('change', async e=>{
+  const id = e.target.dataset.photo; if(!id||!e.target.files[0]) return;
+  $('mDash').textContent='';
+  try{
+    const photo = await resize(e.target.files[0]);
+    const r = await api({action:'photo',id,photo});
+    if(!r.ok) return $('mDash').textContent = r.error||'Could not save the photo.';
+    stamp[id]=Date.now(); load();
+  }catch(_){ $('mDash').textContent='That file is not a photo. Try another one.'; }
+});
+$('list').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  if(!confirm(`Delete ${b.dataset.name} from the list?`)) return;
+  const r = await api({action:'delete',id:b.dataset.del});
+  if(!r.ok) return $('mDash').textContent = r.error||'Could not delete.';
+  load();
+});
+boot();
+</script>
+</body>
+</html>
