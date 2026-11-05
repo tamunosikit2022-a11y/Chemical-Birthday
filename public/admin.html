@@ -36,6 +36,7 @@ button.go:hover{background:var(--ind-d)}button.go:disabled{opacity:.6}
 .btn{display:inline-block;text-align:center;font:600 .85rem var(--font);border:1.5px solid var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer;background:#fff}
 .btn input{position:absolute;opacity:0;width:1px;height:1px}
 .btn.del{border-color:#A3103F;color:#A3103F}
+.btn.fly{background:var(--ink);color:#fff;text-decoration:none}
 .empty{color:var(--muted);text-align:center;padding:28px 0}
 [hidden]{display:none!important}
 </style>
@@ -131,7 +132,7 @@ async function load(){
     const tag = m.days===0 ? '<span class="tag now">Today</span>' : `<span class="tag">in ${m.days} day${m.days===1?'':'s'}</span>`;
     const ph = m.phone ? `<a class="sub" href="tel:${esc(m.phone)}">${esc(m.phone)}</a>` : '';
     return `<div class="row">${av}<div class="info"><div class="nm">${esc(m.name)}</div><div class="sub">${fmt(m.dob)}</div>${ph?ph+'<br>':''}${tag}</div>
-      <div class="acts"><label class="btn">Change photo<input type="file" accept="image/*" data-photo="${m.id}"></label><button class="btn del" data-del="${m.id}" data-name="${esc(m.name)}">Delete</button></div></div>`;
+      <div class="acts"><a class="btn fly" href="/flyer?id=${m.id}">Make flyer</a><label class="btn">Change photo<input type="file" accept="image/*" data-photo="${m.id}"></label><button class="btn del" data-del="${m.id}" data-name="${esc(m.name)}">Delete</button></div></div>`;
   }).join('') : '<p class="empty">No one has registered yet.</p>';
 }
 
