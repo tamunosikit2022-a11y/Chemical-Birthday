@@ -101,6 +101,23 @@ module.exports = async (req, res) => {
       if (!r.ok) return res.status(500).json({ error: 'Could not load members.' });
       return res.json({ members: await r.json() });
     }
+    if (b.action === 'vapid') return res.json({ key: process.env.VAPID_PUBLIC_KEY || '' });
+    if (b.action === 'subscribe') {
+      const x = b.sub;
+      if (!x || !String(x.endpoint || '').startsWith('https://') || !x.keys || !x.keys.p256dh || !x.keys.auth) return res.status(400).json({ error: 'Invalid subscription.' });
+      const r = await sb('push_subs?on_conflict=endpoint', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ endpoint: x.endpoint, sub: { endpoint: x.endpoint, keys: x.keys } }) });
+      return r.ok ? res.json({ ok: true }) : res.status(500).json({ error: 'Could not save. Did you run step4.sql?' });
+    }
+    if (b.action === 'unsubscribe') {
+      await sb(`push_subs?endpoint=eq.${encodeURIComponent(String(b.endpoint || ''))}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+      return res.json({ ok: true });
+    }
+    if (b.action === 'test') {
+      const push = require('./_push');
+      if (!push.ready()) return res.status(500).json({ error: 'The alert keys are not set in Vercel yet.' });
+      const out = await push.sendAll({ title: '🔔 Test alert', body: 'Birthday alerts are working on this phone.', url: '/admin', tag: 'test-' + Date.now(), renotify: true });
+      return out.sent ? res.json({ ok: true, ...out }) : res.status(400).json({ error: 'Nothing was delivered. Turn alerts on for this phone first.' });
+    }
     const id = parseInt(b.id, 10);
     if (!id) return res.status(400).json({ error: 'Missing member.' });
     if (b.action === 'photo') {
