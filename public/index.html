@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chemical Engineering birthdays</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1F6F5; --card:#FFFFFF; --ink:#0E2A2B; --muted:#53706F;
+  --line:#C6D6D4; --flask:#0F8B8D; --indicator:#D81B72; --indicator-dark:#B3135D;
+  --font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.5 var(--font);min-height:100vh;display:flex;justify-content:center;padding:28px 18px 48px}
+main{width:100%;max-width:440px}
+.flask{display:block;width:112px;height:auto;margin:0 0 14px}
+h1{font-weight:800;font-size:2rem;line-height:1.1;margin:0 0 8px;letter-spacing:-.02em}
+.lead{color:var(--muted);margin:0 0 26px;max-width:36ch}
+form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 20px}
+.field{margin-bottom:18px}
+label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-weight:400;color:var(--muted)}
+input[type=text],input[type=tel],input[type=date]{width:100%;font:inherit;color:inherit;padding:12px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;min-height:48px}
+input:focus-visible,button:focus-visible,.pick:focus-within{outline:3px solid var(--flask);outline-offset:2px}
+.photo{display:flex;align-items:center;gap:14px}
+.preview{width:64px;height:64px;border-radius:50%;background:var(--paper);border:1.5px dashed var(--line);object-fit:cover;flex:none}
+.pick{display:inline-block;padding:11px 16px;border:1.5px solid var(--ink);border-radius:8px;font-weight:600;cursor:pointer;min-height:48px}
+.pick input{position:absolute;opacity:0;width:1px;height:1px}
+button.go{width:100%;font:600 1.05rem var(--font);color:#fff;background:var(--indicator);border:0;border-radius:8px;min-height:52px;cursor:pointer;margin-top:4px}
+button.go:hover{background:var(--indicator-dark)}
+button.go:disabled{opacity:.6;cursor:wait}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
+.msg{min-height:1.4em;margin:12px 0 0;font-weight:600}
+.msg.err{color:#A3103F}
+.done{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 20px}
+.done h2{margin:0 0 6px;font-size:1.5rem}
+.done p{margin:0;color:var(--muted)}
+[hidden]{display:none!important}
+#liquid{transition:transform .5s ease}
+@media (prefers-reduced-motion:reduce){#liquid{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <svg class="flask" viewBox="0 0 120 130" role="img" aria-label="Flask that fills as you complete the form">
+    <defs><clipPath id="inside"><path d="M46 12h28v34l34 62a10 10 0 0 1-9 15H21a10 10 0 0 1-9-15l34-62z"/></clipPath></defs>
+    <g clip-path="url(#inside)">
+      <rect id="liquid" x="0" y="0" width="120" height="130" fill="#0F8B8D" style="transform:translateY(130px)"/>
+    </g>
+    <path d="M46 12h28v34l34 62a10 10 0 0 1-9 15H21a10 10 0 0 1-9-15l34-62z" fill="none" stroke="#0E2A2B" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M40 12h40" stroke="#0E2A2B" stroke-width="4" stroke-linecap="round"/>
+  </svg>
+
+  <div id="formWrap">
+    <h1>Chemical Engineering birthdays</h1>
+    <p class="lead">Add your birthday so the department can celebrate with you.</p>
+
+    <form id="f" novalidate>
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" name="name" type="text" autocomplete="name" required maxlength="80">
+      </div>
+      <div class="field">
+        <label for="dob">Date of birth</label>
+        <input id="dob" name="dob" type="date" required min="1950-01-01">
+      </div>
+      <div class="field">
+        <label for="phone">Phone number <span class="hint">(optional)</span></label>
+        <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20">
+      </div>
+      <div class="field">
+        <label id="photoLabel">Photo <span class="hint">(optional)</span></label>
+        <div class="photo">
+          <img id="preview" class="preview" alt="">
+          <label class="pick">Choose a photo<input id="photo" type="file" accept="image/*" aria-labelledby="photoLabel"></label>
+        </div>
+      </div>
+      <div class="hp" aria-hidden="true"><label>Website <input id="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+      <button class="go" id="go" type="submit">Register my birthday</button>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+
+  <div class="done" id="done" hidden>
+    <h2 id="doneTitle">You’re on the list.</h2>
+    <p>We’ll celebrate with you on your birthday.</p>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let photoData = null;
+const todayStr = new Date().toISOString().slice(0,10);
+$('dob').max = todayStr;
+
+function progress(){
+  const n = ['name','dob','phone'].filter(k => $(k).value.trim()).length + (photoData ? 1 : 0);
+  $('liquid').style.transform = `translateY(${130 - n/4*95}px)`;
+}
+['name','dob','phone'].forEach(k => $(k).addEventListener('input', progress));
+
+$('photo').addEventListener('change', e => {
+  const file = e.target.files[0];
+  photoData = null; $('preview').removeAttribute('src');
+  if (!file) return progress();
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    const max = 600, s = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    photoData = c.toDataURL('image/jpeg', 0.82);
+    $('preview').src = photoData;
+    URL.revokeObjectURL(url); progress();
+  };
+  img.onerror = () => { $('msg').className='msg err'; $('msg').textContent='That file is not a photo. Try another one.'; };
+  img.src = url;
+});
+
+function fail(t){ $('msg').className='msg err'; $('msg').textContent=t; }
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('msg').className='msg'; $('msg').textContent='';
+  const name = $('name').value.trim(), dob = $('dob').value, phone = $('phone').value.trim();
+  if (name.length < 2) return fail('Please enter your full name.');
+  if (!dob) return fail('Please choose your date of birth.');
+  if (dob > todayStr || dob < '1950-01-01') return fail('That date of birth does not look right.');
+  $('go').disabled = true; $('go').textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, dob, phone, photo: photoData, website: $('website').value })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not save. Please try again.');
+    $('doneTitle').textContent = `You’re on the list, ${name.split(' ')[0]}.`;
+    $('formWrap').hidden = true; $('done').hidden = false;
+    $('liquid').style.transform = 'translateY(35px)';
+  } catch (err) {
+    fail(err.message || 'Could not save. Check your connection and try again.');
+    $('go').disabled = false; $('go').textContent = 'Register my birthday';
+  }
+});
+</script>
+</body>
+</html>
